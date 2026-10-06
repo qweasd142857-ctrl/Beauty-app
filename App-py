@@ -1,0 +1,53 @@
+import streamlit as st
+from google import genai
+
+st.set_page_config(page_title="主持人開播 - AI美顏顧問", layout="centered", page_icon="💄")
+st.title("💄 主持人開播 - AI 智慧美顏顧問")
+st.caption("專為「主持人開播」App 設計的專屬美顏數據分析工具")
+
+api_key = st.text_input("請輸入 Gemini API Key：", type="password")
+
+style = st.selectbox(
+    "請選擇期望的直播風格：",
+    ["精緻網紅風", "甜美少女風", "知性冷艷風", "清透自然風"]
+)
+
+uploaded_file = st.file_uploader("上傳主播照片 (JPG/PNG)", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    st.image(uploaded_file, caption="原始主播照片", use_container_width=True)
+    
+    if st.button("🪄 開始分析並生成美顏數據", type="primary"):
+        if not api_key:
+            st.error("請先輸入 API Key 方可使用！")
+        else:
+            with st.spinner("AI 正在分析面部光影與五官比例..."):
+                try:
+                    client = genai.Client(api_key=api_key)
+                    image_bytes = uploaded_file.getvalue()
+                    
+                    prompt = f"""
+                    你是一位精通「主持人開播」App 的專業直播美顏調校師。
+                    請分析這張照片中人物的膚色、光線、臉型與五官特徵，
+                    並針對「主持人開播」App 的選單，給出設定風格為【{style}】的具體美顏建議。
+                    
+                    請嚴格按照以下三大類別輸出數值表 (範圍 0~100)：
+                    1. 美膚：美白, 精細磨皮, 紅潤, 清晰, 五官立體, 亮眼, 去黑眼圈, 去法令紋
+                    2. 美型：瘦臉, V臉, 窄臉, 瘦鼻, 縮人中, 嘴唇厚度, 微笑嘴角, 開眼角, 眼瞼下至, 下巴
+                    3. 濾鏡：推薦的濾鏡名稱 (如: 質感灰、冷色調、白亮) 與建議濃度 (0~100)
+                    
+                    請另外提供 2~3 點開播前的光線或髮型調整建議。
+                    """
+                    
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[
+                            prompt,
+                            {"mime_type": uploaded_file.type, "data": image_bytes}
+                        ]
+                    )
+                    
+                    st.success("分析完成！")
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"分析失敗，請檢查 API Key 是否正確：{e}")
